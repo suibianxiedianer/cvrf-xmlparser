@@ -1,0 +1,13 @@
+[package]
+name = "cve-xmlparser"
+version = "0.1.0"
+edition = "2021"
+authors = ["Jia Chao <jiachao2130@126.com"]
+license = "MIT"
+keywords = ["cve", "xml"]
+include = ["src/**/*", "Cargo.toml", "README.md"]
+description = "An xml parser for cve."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
