@@ -12,3 +12,4 @@ description = "An xml parser for openEuler cvrf."
 
 [dependencies]
 serde = { version = "1", features = ["serde_derive"] }
+xml-rs = "0.8.20"

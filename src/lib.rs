@@ -3,10 +3,46 @@
     allow(dead_code, unused_imports, unused_variables, unused_mut)
 )]
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use xml::reader::{EventReader, Events, XmlEvent};
 
-#[derive(Debug, Clone,  Serialize, Deserialize)]
+struct XmlReader {
+    // an iterator for XmlEvent
+    events: EventReader<BufReader<File>>,
+
+    // the depth in xml
+    depth: usize,
+}
+
+impl XmlReader {
+    pub fn new(file: File) -> Self {
+        let buffer = BufReader::new(file);
+        let events = EventReader::new(buffer);
+
+        XmlReader { events, depth: 0 }
+    }
+
+    // pull next stream from xml, set the depth as well.
+    pub fn next(&mut self) -> Result<xml::reader::XmlEvent, xml::reader::Error> {
+        let event = self.events.next();
+        match event {
+            Ok(XmlEvent::StartElement { .. }) => {
+                self.depth += 1;
+            }
+            Ok(XmlEvent::EndElement { .. }) => {
+                self.depth -= 1;
+            }
+            _ => {}
+        }
+
+        event
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct CVRF {
     // <DocumentTitle xml:lang="en">
     pub documenttitle: String,
@@ -326,7 +362,7 @@ impl Product {
 //   <CVSSScoreSets>...</CVSSScoreSets>
 //   <Remediations>...</Remediations>
 // </Vulnerability>
-#[derive(Debug, Clone,  Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Vulnerability {
     // <Notes>...</Notes>
     pub notes: Vec<Note>,
