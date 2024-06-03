@@ -4,9 +4,10 @@
 )]
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{self, BufReader};
 
 use serde::{Deserialize, Serialize};
+use tracing::{debug, error, instrument, trace};
 use xml::reader::{EventReader, Events, XmlEvent};
 
 struct XmlReader {
@@ -83,6 +84,37 @@ impl CVRF {
             producttree: ProductTree::new(),
             vulnerability: Vulnerability::new(),
         }
+    }
+
+    #[instrument(skip(self))]
+    pub fn load_xml(&mut self, xmlfile: &str) -> io::Result<()> {
+        let file = File::open(xmlfile)?;
+        let mut xmlreader = XmlReader::new(file);
+
+        loop {
+            let event = xmlreader.next();
+            if xmlreader.depth != 2 {
+                if event == Ok(XmlEvent::EndDocument) {
+                    trace!("End of the xml, break...");
+                    break;
+                }
+                continue;
+            }
+
+            // 这里只处理深度为 2 的子 xml 块
+            match event {
+                Ok(XmlEvent::StartElement { ref name, .. }) => match name.local_name.as_str() {
+                    _ => {}
+                },
+                Err(e) => {
+                    error!("XmlReader error: {e}");
+                    break;
+                }
+                _ => {}
+            }
+        }
+
+        Ok(())
     }
 }
 
