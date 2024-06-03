@@ -1,3 +1,3 @@
-# cve-xmlparser
+# cvrf-xmlparser
 
-一个解析 CVE xml 文件的库
+一个解析 CVRF xml 文件的库
