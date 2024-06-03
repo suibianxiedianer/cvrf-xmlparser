@@ -11,3 +11,4 @@ description = "An xml parser for openEuler cvrf."
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+serde = { version = "1", features = ["serde_derive"] }

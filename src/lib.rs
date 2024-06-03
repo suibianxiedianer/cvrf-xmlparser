@@ -2,8 +2,9 @@
     debug_assertions,
     allow(dead_code, unused_imports, unused_variables, unused_mut)
 )]
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,  Serialize, Deserialize)]
 struct CVRF {
     // <DocumentTitle xml:lang="en">
     pub documenttitle: String,
@@ -46,7 +47,7 @@ impl CVRF {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,  Serialize, Deserialize)]
 struct Publisher;
 
 impl Publisher {
@@ -55,7 +56,7 @@ impl Publisher {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,  Serialize, Deserialize)]
 struct DocumentTracking;
 
 impl DocumentTracking {
@@ -64,7 +65,7 @@ impl DocumentTracking {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,  Serialize, Deserialize)]
 struct Note;
 
 impl Note {
@@ -73,7 +74,7 @@ impl Note {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,  Serialize, Deserialize)]
 struct Reference;
 
 impl Reference {
@@ -82,7 +83,7 @@ impl Reference {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,  Serialize, Deserialize)]
 struct ProductTree;
 
 impl ProductTree {
@@ -91,7 +92,7 @@ impl ProductTree {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,  Serialize, Deserialize)]
 struct Vulnerability;
 
 impl Vulnerability {
