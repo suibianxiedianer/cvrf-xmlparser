@@ -9,4 +9,10 @@ fn cvrf_works() {
     let d_type = "Security Advisory";
     assert_eq!(cvrf.documenttitle, d_title);
     assert_eq!(cvrf.documenttype, d_type);
+
+    // publisher
+    let contactdetails = "openeuler-security@openeuler.org";
+    let issuingauthority = "openEuler security committee";
+    assert_eq!(cvrf.documentpublisher.contactdetails, contactdetails);
+    assert_eq!(cvrf.documentpublisher.issuingauthority, issuingauthority);
 }

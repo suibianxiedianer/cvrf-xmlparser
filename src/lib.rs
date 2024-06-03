@@ -122,6 +122,7 @@ impl CVRF {
                 Ok(XmlEvent::StartElement { ref name, .. }) => match name.local_name.as_str() {
                     "DocumentTitle" => self.documenttitle = xmlreader.next_characters(),
                     "DocumentType" => self.documenttype = xmlreader.next_characters(),
+                    "DocumentPublisher" => self.handle_publisher(&mut xmlreader),
                     _ => {}
                 },
                 Err(e) => {
@@ -133,6 +134,10 @@ impl CVRF {
         }
 
         Ok(())
+    }
+
+    fn handle_publisher(&mut self, xmlreader: &mut XmlReader) {
+        self.documentpublisher.load_from_xmlreader(xmlreader);
     }
 }
 
@@ -155,6 +160,39 @@ impl Publisher {
         Publisher {
             contactdetails: String::new(),
             issuingauthority: String::new(),
+        }
+    }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        let mut key = String::new();
+
+        loop {
+            match xmlreader.next() {
+                Ok(XmlEvent::StartElement { name, .. }) => {
+                    key = name.local_name.clone();
+                    debug!("Find StartElement named: {}", key);
+                }
+                Ok(XmlEvent::EndElement { .. }) => {
+                    // DocumentPublisher 读取完毕
+                    if xmlreader.depth < 2 {
+                        trace!("DocumentPublisher read to end.");
+                        break;
+                    }
+                }
+                Err(e) => {
+                    error!("XmlReader Error: {e}");
+                    break;
+                }
+                _ => {}
+            }
+
+            match key.as_str() {
+                "ContactDetails" => self.contactdetails = xmlreader.next_characters(),
+                "IssuingAuthority" => self.issuingauthority = xmlreader.next_characters(),
+                _ => {},
+            }
+            key.clear();
         }
     }
 }
