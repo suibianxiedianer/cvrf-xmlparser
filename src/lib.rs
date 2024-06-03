@@ -10,6 +10,9 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, error, instrument, trace};
 use xml::reader::{EventReader, Events, XmlEvent};
 
+#[cfg(test)]
+mod test;
+
 struct XmlReader {
     // an iterator for XmlEvent
     events: EventReader<BufReader<File>>,
@@ -40,6 +43,19 @@ impl XmlReader {
         }
 
         event
+    }
+
+    #[instrument(skip(self))]
+    pub fn next_characters(&mut self) -> String {
+        loop {
+            match self.next() {
+                Ok(XmlEvent::Characters(data)) => {
+                    trace!(characters = ?data);
+                    return data.into()
+                }
+                _ => {}
+            }
+        }
     }
 }
 
@@ -104,6 +120,8 @@ impl CVRF {
             // 这里只处理深度为 2 的子 xml 块
             match event {
                 Ok(XmlEvent::StartElement { ref name, .. }) => match name.local_name.as_str() {
+                    "DocumentTitle" => self.documenttitle = xmlreader.next_characters(),
+                    "DocumentType" => self.documenttype = xmlreader.next_characters(),
                     _ => {}
                 },
                 Err(e) => {
