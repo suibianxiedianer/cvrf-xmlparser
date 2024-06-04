@@ -8,11 +8,12 @@ use std::io::{self, BufReader};
 
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, instrument, trace};
-use xml::reader::{EventReader, Events, XmlEvent};
+use xml::reader::{EventReader, XmlEvent};
 
 #[cfg(test)]
 mod test;
 
+#[allow(dead_code)]
 struct XmlReader {
     // an iterator for XmlEvent
     events: EventReader<BufReader<File>>,
@@ -51,7 +52,7 @@ impl XmlReader {
             match self.next() {
                 Ok(XmlEvent::Characters(data)) => {
                     trace!(characters = ?data);
-                    return data.into()
+                    return data.into();
                 }
                 _ => {}
             }
@@ -105,7 +106,8 @@ impl CVRF {
     #[instrument(skip(self))]
     pub fn load_xml(&mut self, xmlfile: &str) -> io::Result<()> {
         let file = File::open(xmlfile)?;
-        let mut xmlreader = XmlReader::new(file);
+        let mut source = XmlReader::new(file);
+        let xmlreader = &mut source;
 
         loop {
             let event = xmlreader.next();
@@ -122,7 +124,8 @@ impl CVRF {
                 Ok(XmlEvent::StartElement { ref name, .. }) => match name.local_name.as_str() {
                     "DocumentTitle" => self.documenttitle = xmlreader.next_characters(),
                     "DocumentType" => self.documenttype = xmlreader.next_characters(),
-                    "DocumentPublisher" => self.handle_publisher(&mut xmlreader),
+                    "DocumentPublisher" => self.documentpublisher.load_from_xmlreader(xmlreader),
+                    "DocumentTracking" => self.documenttracking.load_from_xmlreader(xmlreader),
                     _ => {}
                 },
                 Err(e) => {
@@ -134,10 +137,6 @@ impl CVRF {
         }
 
         Ok(())
-    }
-
-    fn handle_publisher(&mut self, xmlreader: &mut XmlReader) {
-        self.documentpublisher.load_from_xmlreader(xmlreader);
     }
 }
 
@@ -165,34 +164,33 @@ impl Publisher {
 
     #[instrument(skip(self, xmlreader))]
     fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
-        let mut key = String::new();
-
         loop {
-            match xmlreader.next() {
+            let key = match xmlreader.next() {
                 Ok(XmlEvent::StartElement { name, .. }) => {
-                    key = name.local_name.clone();
-                    debug!("Find StartElement named: {}", key);
+                    debug!("Find StartElement named: {}", name.local_name);
+                    name.local_name.clone()
                 }
                 Ok(XmlEvent::EndElement { .. }) => {
                     // DocumentPublisher 读取完毕
                     if xmlreader.depth < 2 {
                         trace!("DocumentPublisher read to end.");
                         break;
+                    } else {
+                        String::new()
                     }
                 }
                 Err(e) => {
                     error!("XmlReader Error: {e}");
                     break;
                 }
-                _ => {}
-            }
+                _ => String::new(),
+            };
 
             match key.as_str() {
                 "ContactDetails" => self.contactdetails = xmlreader.next_characters(),
                 "IssuingAuthority" => self.issuingauthority = xmlreader.next_characters(),
-                _ => {},
+                _ => {}
             }
-            key.clear();
         }
     }
 }
@@ -254,6 +252,61 @@ impl DocumentTracking {
             generator: Generator::new(),
         }
     }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let key = match xmlreader.next() {
+                Ok(XmlEvent::StartElement { name, .. }) => {
+                    debug!("Find StartElement named: {}", name.local_name);
+                    if xmlreader.depth != 3 {
+                        continue;
+                    } else {
+                        name.local_name.clone()
+                    }
+                }
+                Ok(XmlEvent::EndElement { .. }) => {
+                    // DocumentTracking 读取完毕
+                    if xmlreader.depth < 2 {
+                        trace!("DocumentTracking read to end.");
+                        break;
+                    }
+                    String::new()
+                }
+                Err(e) => {
+                    error!("XmlReader Error: {e}");
+                    break;
+                }
+                _ => String::new(),
+            };
+
+            match key.as_str() {
+                "Identification" => self.identification.load_from_xmlreader(xmlreader),
+                "Status" => self.status = xmlreader.next_characters(),
+                "Version" => self.version = xmlreader.next_characters(),
+                "RevisionHistory" => self.handle_revisionhistory(xmlreader),
+                "InitialReleaseDate" => self.initialreleasedate = xmlreader.next_characters(),
+                "CurrentReleaseDate" => self.currentreleasedate = xmlreader.next_characters(),
+                "Generator" => self.generator.load_from_xmlreader(xmlreader),
+                _ => {}
+            }
+        }
+    }
+
+    #[instrument(skip(self, xmlreader))]
+    fn handle_revisionhistory(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let mut revision = Revision::new();
+            revision.load_from_xmlreader(xmlreader);
+            // 所有 revision 读取完毕
+            if xmlreader.depth < 3 {
+                trace!("RevisionHistory read to end.");
+                break;
+            }
+            trace!("RevisionHistory loading revison...");
+            self.revisionhistory.push(revision);
+        }
+    }
 }
 
 // depth = 3
@@ -269,6 +322,11 @@ pub struct Identification {
 impl Identification {
     pub fn new() -> Self {
         Identification { id: String::new() }
+    }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        self.id = xmlreader.next_characters();
     }
 }
 
@@ -298,6 +356,39 @@ impl Revision {
             description: String::new(),
         }
     }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let key = match xmlreader.next() {
+                Ok(XmlEvent::StartElement { name, .. }) => {
+                    debug!("Find StartElement named: {}", name.local_name);
+                    name.local_name.clone()
+                }
+                Ok(XmlEvent::EndElement { .. }) => {
+                    // Revision 读取完毕
+                    if xmlreader.depth < 4 {
+                        trace!("Revision read to end.");
+                        break;
+                    } else {
+                        String::new()
+                    }
+                }
+                Err(e) => {
+                    error!("XmlReader Error: {e}");
+                    break;
+                }
+                _ => String::new(),
+            };
+
+            match key.as_str() {
+                "Number" => self.number = xmlreader.next_characters(),
+                "Date" => self.date = xmlreader.next_characters(),
+                "Description" => self.description = xmlreader.next_characters(),
+                _ => {}
+            }
+        }
+    }
 }
 
 // depth = 3
@@ -319,6 +410,38 @@ impl Generator {
         Generator {
             engine: String::new(),
             date: String::new(),
+        }
+    }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let key = match xmlreader.next() {
+                Ok(XmlEvent::StartElement { name, .. }) => {
+                    debug!("Find StartElement named: {}", name.local_name);
+                    name.local_name.clone()
+                }
+                Ok(XmlEvent::EndElement { .. }) => {
+                    // DocumentPublisher 读取完毕
+                    if xmlreader.depth < 2 {
+                        trace!("DocumentPublisher read to end.");
+                        break;
+                    } else {
+                        String::new()
+                    }
+                }
+                Err(e) => {
+                    error!("XmlReader Error: {e}");
+                    break;
+                }
+                _ => String::new(),
+            };
+
+            match key.as_str() {
+                "Engine" => self.engine = xmlreader.next_characters(),
+                "Date" => self.date = xmlreader.next_characters(),
+                _ => {}
+            }
         }
     }
 }
