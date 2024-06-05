@@ -46,6 +46,27 @@ impl XmlReader {
         event
     }
 
+    pub fn next_start_name_under_depth(&mut self, depth: usize) -> Option<String> {
+        match self.next() {
+            Ok(XmlEvent::StartElement { name, .. }) => {
+                debug!("Find StartElement named: {}", name.local_name);
+                Some(name.local_name.clone())
+            }
+            Ok(XmlEvent::EndElement { .. }) => {
+                if self.depth > depth {
+                    Some(String::new())
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                error!("XmlReader Error: {e}");
+                None
+            }
+            _ => Some(String::new()),
+        }
+    }
+
     #[instrument(skip(self))]
     pub fn next_characters(&mut self) -> String {
         loop {
@@ -126,6 +147,7 @@ impl CVRF {
                     "DocumentType" => self.documenttype = xmlreader.next_characters(),
                     "DocumentPublisher" => self.documentpublisher.load_from_xmlreader(xmlreader),
                     "DocumentTracking" => self.documenttracking.load_from_xmlreader(xmlreader),
+                    "DocumentNotes" => self.handle_notes(xmlreader),
                     _ => {}
                 },
                 Err(e) => {
@@ -137,6 +159,18 @@ impl CVRF {
         }
 
         Ok(())
+    }
+
+    fn handle_notes(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let mut note = Note::new();
+            note.load_from_xmlreader(xmlreader);
+
+            if xmlreader.depth < 2 {
+                break;
+            }
+            self.documentnotes.push(note)
+        }
     }
 }
 
@@ -165,25 +199,10 @@ impl Publisher {
     #[instrument(skip(self, xmlreader))]
     fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
         loop {
-            let key = match xmlreader.next() {
-                Ok(XmlEvent::StartElement { name, .. }) => {
-                    debug!("Find StartElement named: {}", name.local_name);
-                    name.local_name.clone()
-                }
-                Ok(XmlEvent::EndElement { .. }) => {
-                    // DocumentPublisher 读取完毕
-                    if xmlreader.depth < 2 {
-                        trace!("DocumentPublisher read to end.");
-                        break;
-                    } else {
-                        String::new()
-                    }
-                }
-                Err(e) => {
-                    error!("XmlReader Error: {e}");
-                    break;
-                }
-                _ => String::new(),
+            let key = if let Some(key) = xmlreader.next_start_name_under_depth(1) {
+                key
+            } else {
+                break;
             };
 
             match key.as_str() {
@@ -256,28 +275,10 @@ impl DocumentTracking {
     #[instrument(skip(self, xmlreader))]
     fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
         loop {
-            let key = match xmlreader.next() {
-                Ok(XmlEvent::StartElement { name, .. }) => {
-                    debug!("Find StartElement named: {}", name.local_name);
-                    if xmlreader.depth != 3 {
-                        continue;
-                    } else {
-                        name.local_name.clone()
-                    }
-                }
-                Ok(XmlEvent::EndElement { .. }) => {
-                    // DocumentTracking 读取完毕
-                    if xmlreader.depth < 2 {
-                        trace!("DocumentTracking read to end.");
-                        break;
-                    }
-                    String::new()
-                }
-                Err(e) => {
-                    error!("XmlReader Error: {e}");
-                    break;
-                }
-                _ => String::new(),
+            let key = if let Some(key) = xmlreader.next_start_name_under_depth(1) {
+                key
+            } else {
+                break;
             };
 
             match key.as_str() {
@@ -360,25 +361,10 @@ impl Revision {
     #[instrument(skip(self, xmlreader))]
     fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
         loop {
-            let key = match xmlreader.next() {
-                Ok(XmlEvent::StartElement { name, .. }) => {
-                    debug!("Find StartElement named: {}", name.local_name);
-                    name.local_name.clone()
-                }
-                Ok(XmlEvent::EndElement { .. }) => {
-                    // Revision 读取完毕
-                    if xmlreader.depth < 4 {
-                        trace!("Revision read to end.");
-                        break;
-                    } else {
-                        String::new()
-                    }
-                }
-                Err(e) => {
-                    error!("XmlReader Error: {e}");
-                    break;
-                }
-                _ => String::new(),
+            let key = if let Some(key) = xmlreader.next_start_name_under_depth(3) {
+                key
+            } else {
+                break;
             };
 
             match key.as_str() {
@@ -416,25 +402,10 @@ impl Generator {
     #[instrument(skip(self, xmlreader))]
     fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
         loop {
-            let key = match xmlreader.next() {
-                Ok(XmlEvent::StartElement { name, .. }) => {
-                    debug!("Find StartElement named: {}", name.local_name);
-                    name.local_name.clone()
-                }
-                Ok(XmlEvent::EndElement { .. }) => {
-                    // DocumentPublisher 读取完毕
-                    if xmlreader.depth < 2 {
-                        trace!("DocumentPublisher read to end.");
-                        break;
-                    } else {
-                        String::new()
-                    }
-                }
-                Err(e) => {
-                    error!("XmlReader Error: {e}");
-                    break;
-                }
-                _ => String::new(),
+            let key = if let Some(key) = xmlreader.next_start_name_under_depth(1) {
+                key
+            } else {
+                break;
             };
 
             match key.as_str() {
@@ -472,6 +443,10 @@ impl Note {
             ordinal: String::new(),
             content: String::new(),
         }
+    }
+
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        unimplemented!();
     }
 }
 
