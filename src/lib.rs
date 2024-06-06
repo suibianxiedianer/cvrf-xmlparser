@@ -46,6 +46,9 @@ impl XmlReader {
         event
     }
 
+    /// 若下一个字段是 StrartElement，则返回其 name , 若为其它元素，则返回一个空字符串，类型为
+    /// Option<String>。当其所在深度小于指定值时，返回 None。
+    #[instrument(skip(self, depth))]
     pub fn next_start_name_under_depth(&mut self, depth: usize) -> Option<String> {
         match self.next() {
             Ok(XmlEvent::StartElement { name, .. }) => {
@@ -67,6 +70,8 @@ impl XmlReader {
         }
     }
 
+    /// 向下读取一个 Characters 类型的值，并忽略其它除 EndDocument 和
+    /// 错误外的所有结果（此时返回空字符串）。
     #[instrument(skip(self))]
     pub fn next_characters(&mut self) -> String {
         loop {
@@ -75,7 +80,15 @@ impl XmlReader {
                     trace!(characters = ?data);
                     return data.into();
                 }
-                _ => {}
+                Ok(XmlEvent::EndDocument) => {
+                    error!("End of the xml, that shouldn't happen...");
+                    return "".to_string();
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    error!("XmlReader error: {e}");
+                    return "".to_string();
+                }
             }
         }
     }
