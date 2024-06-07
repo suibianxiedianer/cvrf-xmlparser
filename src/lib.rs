@@ -162,6 +162,7 @@ impl CVRF {
                     "DocumentTracking" => self.documenttracking.load_from_xmlreader(xmlreader),
                     "DocumentNotes" => self.handle_notes(xmlreader),
                     "DocumentReferences" => self.handle_references(xmlreader),
+                    "ProductTree" => self.producttree.load_from_xmlreader(xmlreader),
                     _ => {}
                 },
                 Err(e) => {
@@ -583,6 +584,77 @@ impl ProductTree {
             packages: HashMap::new(),
         }
     }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        let mut _type = String::new();
+        let mut _name = String::new();
+
+        loop {
+            match xmlreader.next() {
+                Ok(XmlEvent::StartElement { attributes, .. }) => {
+                    for attr in attributes {
+                        match attr.name.local_name.as_str() {
+                            "Type" => {
+                                _type = attr.value.clone();
+                            }
+                            "Name" => {
+                                _name = attr.value.clone();
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                Ok(XmlEvent::EndElement { .. }) => {
+                    if xmlreader.depth < 2 {
+                        trace!("ProductTree read end.");
+                        break;
+                    }
+                }
+                Err(e) => {
+                    error!("XmlReader Error: {e}");
+                    break;
+                }
+                _ => {}
+            }
+
+            if _type.as_str() == "Product Name" {
+                self._load_products_branch(xmlreader);
+            }
+            if _type.as_str() == "Package Arch" {
+                self.packages.insert(_name.clone(), vec![]);
+                self._load_packages_branch(&_name, xmlreader);
+            }
+            _type.clear();
+            _name.clear();
+        }
+
+    }
+
+    #[instrument(skip(self, xmlreader))]
+    fn _load_products_branch(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let mut product = Product::new();
+            product.load_from_xmlreader(xmlreader);
+            if xmlreader.depth < 3 {
+                break;
+            }
+            self.products.push(product);
+        }
+    }
+
+    #[instrument(skip(self, key, xmlreader))]
+    fn _load_packages_branch(&mut self, key: &str, xmlreader: &mut XmlReader) {
+        let packages = self.packages.get_mut(key).unwrap();
+        loop {
+            let mut package = Product::new();
+            package.load_from_xmlreader(xmlreader);
+            if xmlreader.depth < 3 {
+                break;
+            }
+            packages.push(package);
+        }
+    }
 }
 
 // depth = 4
@@ -607,6 +679,33 @@ impl Product {
             productid: String::new(),
             cpe: String::new(),
             content: String::new(),
+        }
+    }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            match xmlreader.next() {
+                Ok(XmlEvent::StartElement { attributes, .. }) => {
+                    for attr in attributes {
+                        match attr.name.local_name.as_str() {
+                            "ProductID" => self.productid = attr.value.clone(),
+                            "CPE" => self.cpe = attr.value.clone(),
+                            _ => {}
+                        }
+                    }
+                    self.content = xmlreader.next_characters();
+                }
+                Ok(XmlEvent::EndElement { .. }) => {
+                    trace!("Product read end.");
+                    break;
+                }
+                Err(e) => {
+                    error!("XmlReader Error: {e}");
+                    break;
+                }
+                _ => {}
+            }
         }
     }
 }

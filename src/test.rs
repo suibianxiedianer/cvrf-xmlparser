@@ -55,4 +55,33 @@ fn cvrf_works() {
     assert_eq!(cvrf.documentreferences.len(), 3);
     assert_eq!(cvrf.documentreferences[1].r#type, reference_type);
     assert_eq!(cvrf.documentreferences[1].r#url, reference_url);
+
+    // producttree
+    let producttree_productid = "openEuler-22.03-LTS";
+    let producttree_cep = "cpe:/a:openEuler:openEuler:22.03-LTS";
+    let producttree_content = "openEuler-22.03-LTS";
+    assert_eq!(cvrf.producttree.products.len(), 6);
+    assert_eq!(
+        cvrf.producttree.products[2].productid,
+        producttree_productid
+    );
+    assert_eq!(cvrf.producttree.products[2].cpe, producttree_cep);
+    assert_eq!(cvrf.producttree.products[2].content, producttree_content);
+    let producttree_src = "src";
+    let producttree_src_productid = "golang-1.17.3-32";
+    let producttree_src_cep = "cpe:/a:openEuler:openEuler:22.03-LTS";
+    let producttree_src_content = "golang-1.17.3-32.oe2203.src.rpm";
+    assert_eq!(cvrf.producttree.packages.len(), 4);
+    assert_eq!(
+        cvrf.producttree.packages.get(producttree_src).unwrap()[2].productid,
+        producttree_src_productid
+    );
+    assert_eq!(
+        cvrf.producttree.packages.get(producttree_src).unwrap()[2].cpe,
+        producttree_src_cep
+    );
+    assert_eq!(
+        cvrf.producttree.packages.get(producttree_src).unwrap()[2].content,
+        producttree_src_content
+    );
 }
