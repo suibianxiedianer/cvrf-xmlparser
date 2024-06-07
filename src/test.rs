@@ -48,4 +48,11 @@ fn cvrf_works() {
     assert_eq!(cvrf.documentnotes[0].r#type, note_type);
     assert_eq!(cvrf.documentnotes[0].ordinal, note_ordinal);
     assert_eq!(cvrf.documentnotes[1].content, note_content);
+
+    // references
+    let reference_type = "openEuler CVE";
+    let reference_url = "https://www.openeuler.org/en/security/cve/detail.html?id=CVE-2023-45288";
+    assert_eq!(cvrf.documentreferences.len(), 3);
+    assert_eq!(cvrf.documentreferences[1].r#type, reference_type);
+    assert_eq!(cvrf.documentreferences[1].r#url, reference_url);
 }

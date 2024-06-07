@@ -161,6 +161,7 @@ impl CVRF {
                     "DocumentPublisher" => self.documentpublisher.load_from_xmlreader(xmlreader),
                     "DocumentTracking" => self.documenttracking.load_from_xmlreader(xmlreader),
                     "DocumentNotes" => self.handle_notes(xmlreader),
+                    "DocumentReferences" => self.handle_references(xmlreader),
                     _ => {}
                 },
                 Err(e) => {
@@ -183,6 +184,18 @@ impl CVRF {
                 break;
             }
             self.documentnotes.push(note);
+        }
+    }
+
+    fn handle_references(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let mut reference = Reference::new();
+            reference.load_from_xmlreader(xmlreader);
+
+            if xmlreader.depth < 2 {
+                break;
+            }
+            self.documentreferences.push(reference);
         }
     }
 }
@@ -504,6 +517,29 @@ impl Reference {
         Reference {
             r#type: String::new(),
             url: String::new(),
+        }
+    }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            match xmlreader.next() {
+                Ok(XmlEvent::StartElement { attributes, .. }) => {
+                    self.r#type = attributes[0].value.clone();
+                    self.url = xmlreader.next_characters();
+                }
+                Ok(XmlEvent::EndElement { .. }) => {
+                    if xmlreader.depth < 3 {
+                        trace!("Reference read end.");
+                        break;
+                    }
+                }
+                Err(e) => {
+                    error!("XmlReader Error: {e}");
+                    break;
+                }
+                _ => {}
+            }
         }
     }
 }
