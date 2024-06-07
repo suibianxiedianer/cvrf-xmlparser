@@ -182,7 +182,7 @@ impl CVRF {
             if xmlreader.depth < 2 {
                 break;
             }
-            self.documentnotes.push(note)
+            self.documentnotes.push(note);
         }
     }
 }
@@ -415,7 +415,7 @@ impl Generator {
     #[instrument(skip(self, xmlreader))]
     fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
         loop {
-            let key = if let Some(key) = xmlreader.next_start_name_under_depth(1) {
+            let key = if let Some(key) = xmlreader.next_start_name_under_depth(2) {
                 key
             } else {
                 break;
@@ -458,8 +458,32 @@ impl Note {
         }
     }
 
+    #[instrument(skip(self, xmlreader))]
     fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
-        unimplemented!();
+        loop {
+            match xmlreader.next() {
+                Ok(XmlEvent::StartElement { attributes, .. }) => {
+                    for attr in attributes {
+                        match attr.name.local_name.as_str() {
+                            "Title" => self.title = attr.value.clone(),
+                            "Type" => self.r#type = attr.value.clone(),
+                            "Ordinal" => self.ordinal = attr.value.clone(),
+                            _ => {}
+                        }
+                    }
+                    self.content = xmlreader.next_characters();
+                }
+                Ok(XmlEvent::EndElement { .. }) => {
+                    trace!("Note read end.");
+                    break;
+                }
+                Err(e) => {
+                    error!("XmlReader Error: {e}");
+                    break;
+                }
+                _ => {}
+            }
+        }
     }
 }
 

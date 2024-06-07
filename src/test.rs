@@ -37,4 +37,15 @@ fn cvrf_works() {
     assert_eq!(cvrf.documenttracking.currentreleasedate, date);
     assert_eq!(cvrf.documenttracking.generator.engine, engine);
     assert_eq!(cvrf.documenttracking.generator.date, date);
+
+    // notes
+    let note_title = "Synopsis";
+    let note_type = "General";
+    let note_ordinal = "1";
+    let note_content =  "An update for golang is now available for openEuler-20.03-LTS-SP1,openEuler-20.03-LTS-SP4,openEuler-22.03-LTS,openEuler-22.03-LTS-SP1,openEuler-22.03-LTS-SP2 and openEuler-22.03-LTS-SP3.";
+    assert_eq!(cvrf.documentnotes.len(), 6);
+    assert_eq!(cvrf.documentnotes[0].title, note_title);
+    assert_eq!(cvrf.documentnotes[0].r#type, note_type);
+    assert_eq!(cvrf.documentnotes[0].ordinal, note_ordinal);
+    assert_eq!(cvrf.documentnotes[1].content, note_content);
 }
