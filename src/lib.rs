@@ -95,7 +95,7 @@ impl XmlReader {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct CVRF {
+pub struct CVRF {
     // <DocumentTitle xml:lang="en">
     pub documenttitle: String,
 
@@ -118,7 +118,7 @@ struct CVRF {
     pub producttree: ProductTree,
 
     // <Vulnerability xmlns="http://www.icasi.org/CVRF/schema/vuln/1.1" Ordinal="1">
-    pub vulnerability: Vulnerability,
+    pub vulnerabilities: Vec<Vulnerability>,
 }
 
 impl CVRF {
@@ -133,7 +133,7 @@ impl CVRF {
             documentnotes: vec![],
             documentreferences: vec![],
             producttree: ProductTree::new(),
-            vulnerability: Vulnerability::new(),
+            vulnerabilities: vec![],
         }
     }
 
@@ -163,6 +163,7 @@ impl CVRF {
                     "DocumentNotes" => self.handle_notes(xmlreader),
                     "DocumentReferences" => self.handle_references(xmlreader),
                     "ProductTree" => self.producttree.load_from_xmlreader(xmlreader),
+                    "Vulnerability" => self.handle_vulnerabilities(xmlreader),
                     _ => {}
                 },
                 Err(e) => {
@@ -197,6 +198,14 @@ impl CVRF {
                 break;
             }
             self.documentreferences.push(reference);
+        }
+    }
+
+    fn handle_vulnerabilities(&mut self, xmlreader: &mut XmlReader) {
+        let mut vulnerability = Vulnerability::new();
+        vulnerability.load_from_xmlreader(xmlreader);
+        if vulnerability.cve != "" {
+            self.vulnerabilities.push(vulnerability);
         }
     }
 }
@@ -628,7 +637,6 @@ impl ProductTree {
             _type.clear();
             _name.clear();
         }
-
     }
 
     #[instrument(skip(self, xmlreader))]
@@ -756,6 +764,84 @@ impl Vulnerability {
             remediations: Vec::new(),
         }
     }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let key = if let Some(key) = xmlreader.next_start_name_under_depth(1) {
+                key
+            } else {
+                break;
+            };
+
+            match key.as_str() {
+                "Notes" => self.handle_notes(xmlreader),
+                "ReleaseDate" => self.releasedate = xmlreader.next_characters(),
+                "CVE" => self.cve = xmlreader.next_characters(),
+                "ProductStatuses" => self.handle_productstatuses(xmlreader),
+                "Threats" => self.handle_threats(xmlreader),
+                "CVSSScoreSets" => self.handle_cvssscoresets(xmlreader),
+                "Remediations" => self.handle_remediations(xmlreader),
+                _ => {}
+            }
+        }
+    }
+
+    fn handle_notes(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let mut note = Note::new();
+            note.load_from_xmlreader(xmlreader);
+
+            if xmlreader.depth < 3 {
+                break;
+            }
+            self.notes.push(note);
+        }
+    }
+
+    fn handle_productstatuses(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let mut status = ProductStatus::new();
+            status.load_from_xmlreader(xmlreader);
+            if xmlreader.depth < 3 {
+                break;
+            }
+            self.productstatuses.push(status);
+        }
+    }
+
+    fn handle_threats(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let mut threat = Threat::new();
+            threat.load_from_xmlreader(xmlreader);
+            if xmlreader.depth < 3 {
+                break;
+            }
+            self.threats.push(threat);
+        }
+    }
+
+    fn handle_cvssscoresets(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let mut scoreset = ScoreSet::new();
+            scoreset.load_from_xmlreader(xmlreader);
+            if xmlreader.depth < 3 {
+                break;
+            }
+            self.cvssscoresets.push(scoreset);
+        }
+    }
+
+    fn handle_remediations(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let mut remediation = Remediation::new();
+            remediation.load_from_xmlreader(xmlreader);
+            if xmlreader.depth < 3 {
+                break;
+            }
+            self.remediations.push(remediation);
+        }
+    }
 }
 
 // depth = 4
@@ -777,6 +863,30 @@ impl ProductStatus {
         ProductStatus {
             status: String::new(),
             products: Vec::new(),
+        }
+    }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            match xmlreader.next() {
+                Ok(XmlEvent::StartElement { attributes, .. }) => {
+                    if xmlreader.depth == 4 {
+                        self.status = attributes[0].value.clone();
+                    }
+                    self.products.push(xmlreader.next_characters());
+                }
+                Ok(XmlEvent::EndElement { .. }) => {
+                    if xmlreader.depth < 4 {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    error!("XmlReader Error: {e}");
+                    break;
+                }
+                _ => {}
+            }
         }
     }
 }
@@ -801,6 +911,31 @@ impl Threat {
             description: String::new(),
         }
     }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            match xmlreader.next() {
+                Ok(XmlEvent::StartElement { attributes, .. }) => {
+                    if xmlreader.depth == 4 {
+                        self.r#type = attributes[0].value.clone();
+                    } else {
+                        self.description = xmlreader.next_characters();
+                    }
+                }
+                Ok(XmlEvent::EndElement { .. }) => {
+                    if xmlreader.depth < 4 {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    error!("XmlReader Error: {e}");
+                    break;
+                }
+                _ => {}
+            }
+        }
+    }
 }
 
 // depth = 4
@@ -822,6 +957,23 @@ impl ScoreSet {
         ScoreSet {
             basescore: String::new(),
             vector: String::new(),
+        }
+    }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        loop {
+            let key = if let Some(key) = xmlreader.next_start_name_under_depth(3) {
+                key
+            } else {
+                break;
+            };
+
+            match key.as_str() {
+                "BaseScore" => self.basescore = xmlreader.next_characters(),
+                "Vector" => self.vector = xmlreader.next_characters(),
+                _ => {}
+            }
         }
     }
 }
@@ -856,6 +1008,47 @@ impl Remediation {
             description: String::new(),
             date: String::new(),
             url: String::new(),
+        }
+    }
+
+    #[instrument(skip(self, xmlreader))]
+    fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
+        // 读取类型
+        loop {
+            match xmlreader.next() {
+                Ok(XmlEvent::StartElement { attributes, .. }) => {
+                    if xmlreader.depth == 4 {
+                        self.r#type = attributes[0].value.clone();
+                    }
+                    break;
+                }
+                Ok(XmlEvent::EndElement { .. }) => {
+                    if xmlreader.depth < 4 {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    error!("XmlReader Error: {e}");
+                    break;
+                }
+                _ => {}
+            }
+        }
+
+        // 其它字段
+        loop {
+            let key = if let Some(key) = xmlreader.next_start_name_under_depth(3) {
+                key
+            } else {
+                break;
+            };
+
+            match key.as_str() {
+                "Description" => self.description = xmlreader.next_characters(),
+                "DATE" => self.date = xmlreader.next_characters(),
+                "URL" => self.url = xmlreader.next_characters(),
+                _ => {}
+            }
         }
     }
 }

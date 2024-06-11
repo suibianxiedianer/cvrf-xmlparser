@@ -84,4 +84,52 @@ fn cvrf_works() {
         cvrf.producttree.packages.get(producttree_src).unwrap()[2].content,
         producttree_src_content
     );
+
+    // vulnerabilities
+    let cvrf_vulner_releasedate = "2024-04-19";
+    let cvrf_vulner_cve = "CVE-2023-45288";
+    let cvrf_vulner_productstatues_status = "Fixed";
+    let cvrf_vulner_productstatues_product = "openEuler-22.03-LTS";
+    let cvrf_vulner_basescore = "7.5";
+    let cvrf_vulner_vector = "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H";
+    let cvrf_vulner_remedition_type = "Vendor Fix";
+    let cvrf_vulner_remedition_descrition = "golang security update";
+    let cvrf_vulner_remedition_date = "2024-04-19";
+    let cvrf_vulner_remedition_url = "https://www.openeuler.org/en/security/safety-bulletin/detail.html?id=openEuler-SA-2024-1488";
+
+    assert_eq!(cvrf.vulnerabilities[0].notes.len(), 1);
+    assert_eq!(cvrf.vulnerabilities[0].releasedate, cvrf_vulner_releasedate);
+    assert_eq!(cvrf.vulnerabilities[0].cve, cvrf_vulner_cve);
+    assert_eq!(
+        cvrf.vulnerabilities[0].productstatuses[0].status,
+        cvrf_vulner_productstatues_status
+    );
+    assert_eq!(
+        cvrf.vulnerabilities[0].productstatuses[0].products[2],
+        cvrf_vulner_productstatues_product
+    );
+    assert_eq!(
+        cvrf.vulnerabilities[0].cvssscoresets[0].basescore,
+        cvrf_vulner_basescore
+    );
+    assert_eq!(
+        cvrf.vulnerabilities[0].cvssscoresets[0].vector,
+        cvrf_vulner_vector
+    );
+    assert_eq!(
+        cvrf.vulnerabilities[0].remediations[0].r#type,
+        cvrf_vulner_remedition_type
+    );
+    assert_eq!(
+        cvrf.vulnerabilities[0].remediations[0].description,
+        cvrf_vulner_remedition_descrition
+    );
+    assert_eq!(
+        cvrf.vulnerabilities[0].remediations[0].date,
+        cvrf_vulner_remedition_date
+    );
+    assert_eq!(
+        cvrf.vulnerabilities[0].remediations[0].url,
+        cvrf_vulner_remedition_url
+    );
 }
