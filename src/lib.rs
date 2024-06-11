@@ -3,8 +3,10 @@
     allow(dead_code, unused_imports, unused_variables, unused_mut)
 )]
 use std::collections::HashMap;
+use std::fmt;
 use std::fs::File;
 use std::io::{self, BufReader};
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, instrument, trace};
@@ -901,14 +903,14 @@ pub struct Threat {
     pub r#type: String,
 
     // As threat level
-    pub description: String,
+    pub description: Severity,
 }
 
 impl Threat {
     pub fn new() -> Self {
         Threat {
             r#type: String::new(),
-            description: String::new(),
+            description: Severity::new(),
         }
     }
 
@@ -920,7 +922,7 @@ impl Threat {
                     if xmlreader.depth == 4 {
                         self.r#type = attributes[0].value.clone();
                     } else {
-                        self.description = xmlreader.next_characters();
+                        self.description = xmlreader.next_characters().parse::<Severity>().unwrap();
                     }
                 }
                 Ok(XmlEvent::EndElement { .. }) => {
@@ -937,6 +939,54 @@ impl Threat {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Severity {
+    Null,
+    Low,
+    Moderate,
+    Important,
+    Critical,
+}
+
+impl Severity {
+    pub fn new() -> Self {
+        Severity::Null
+    }
+}
+
+// 为枚举 Severity 实现 FromStr trait
+impl FromStr for Severity {
+    type Err = ParseSeverityError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "low" => Ok(Severity::Low),
+            "moderate" | "medium" => Ok(Severity::Moderate),
+            "important" | "high" => Ok(Severity::Important),
+            "critical" => Ok(Severity::Critical),
+            _ => Err(ParseSeverityError::InvalidSeverity),
+        }
+    }
+}
+
+// 定义 ParseSeverityError 枚举类型来表示解析错误
+#[derive(Debug, Clone)]
+pub enum ParseSeverityError {
+    InvalidSeverity,
+}
+
+// 为 ParseSeverityError 实现 Display trait，以便更好地显示错误信息
+impl fmt::Display for ParseSeverityError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ParseSeverityError::InvalidSeverity => write!(f, "Invalid severity level"),
+        }
+    }
+}
+
+// 为 ParseSeverityError 实现 std::error::Error trait
+impl std::error::Error for ParseSeverityError {}
 
 // depth = 4
 // <ScoreSet>

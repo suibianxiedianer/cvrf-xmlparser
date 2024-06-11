@@ -90,6 +90,7 @@ fn cvrf_works() {
     let cvrf_vulner_cve = "CVE-2023-45288";
     let cvrf_vulner_productstatues_status = "Fixed";
     let cvrf_vulner_productstatues_product = "openEuler-22.03-LTS";
+    let cvrf_vulner_threat = Severity::Important;
     let cvrf_vulner_basescore = "7.5";
     let cvrf_vulner_vector = "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H";
     let cvrf_vulner_remedition_type = "Vendor Fix";
@@ -108,6 +109,7 @@ fn cvrf_works() {
         cvrf.vulnerabilities[0].productstatuses[0].products[2],
         cvrf_vulner_productstatues_product
     );
+    assert_eq!(cvrf.vulnerabilities[0].threats[0].description, cvrf_vulner_threat);
     assert_eq!(
         cvrf.vulnerabilities[0].cvssscoresets[0].basescore,
         cvrf_vulner_basescore
