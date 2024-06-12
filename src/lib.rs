@@ -521,14 +521,14 @@ impl Note {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Reference {
     pub r#type: String,
-    pub url: String,
+    pub url: Vec<String>,
 }
 
 impl Reference {
     pub fn new() -> Self {
         Reference {
             r#type: String::new(),
-            url: String::new(),
+            url: Vec::new(),
         }
     }
 
@@ -537,8 +537,11 @@ impl Reference {
         loop {
             match xmlreader.next() {
                 Ok(XmlEvent::StartElement { attributes, .. }) => {
-                    self.r#type = attributes[0].value.clone();
-                    self.url = xmlreader.next_characters();
+                    if xmlreader.depth == 3 {
+                        self.r#type = attributes[0].value.clone();
+                    } else {
+                        self.url.push(xmlreader.next_characters());
+                    }
                 }
                 Ok(XmlEvent::EndElement { .. }) => {
                     if xmlreader.depth < 3 {

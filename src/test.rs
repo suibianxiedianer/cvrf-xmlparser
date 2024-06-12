@@ -54,7 +54,7 @@ fn cvrf_works() {
     let reference_url = "https://www.openeuler.org/en/security/cve/detail.html?id=CVE-2023-45288";
     assert_eq!(cvrf.documentreferences.len(), 3);
     assert_eq!(cvrf.documentreferences[1].r#type, reference_type);
-    assert_eq!(cvrf.documentreferences[1].r#url, reference_url);
+    assert_eq!(cvrf.documentreferences[1].url[0], reference_url);
 
     // producttree
     let producttree_productid = "openEuler-22.03-LTS";
