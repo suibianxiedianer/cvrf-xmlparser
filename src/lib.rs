@@ -139,6 +139,89 @@ impl CVRF {
         }
     }
 
+    /// 获取安全公告的 ID
+    #[instrument(skip(self))]
+    pub fn id(&self) -> &str {
+        self.documenttracking.identification.id.as_str()
+    }
+
+    /// 获取安全公告的标题内容
+    #[instrument(skip(self))]
+    pub fn title(&self) -> &str {
+        &self.documenttitle
+    }
+
+    /// 安全公告中的 url 不正确，故重新组合一次
+    #[instrument(skip(self))]
+    pub fn url(&self) -> String {
+        format!("https://www.openeuler.org/zh/security/security-bulletins/detail/?id={}", self.id())
+    }
+
+    /// 获取安全公告的概要信息
+    #[instrument(skip(self))]
+    pub fn summary(&self) -> Option<&str> {
+        if let Some(note) = self.documentnotes.get("Summary") {
+            Some(note.content.as_str())
+        } else {
+            None
+        }
+    }
+
+    /// 获取安全公告的详细信息
+    #[instrument(skip(self))]
+    pub fn description(&self) -> Option<&str> {
+        if let Some(note) = self.documentnotes.get("Description") {
+            Some(note.content.as_str())
+        } else {
+            None
+        }
+    }
+
+    /// 获取安全公告的危害等级
+    #[instrument(skip(self))]
+    pub fn severity(&self) -> Result<Severity, ParseSeverityError> {
+        if let Some(note) = self.documentnotes.get("Severity") {
+            note.content.parse::<Severity>()
+        } else {
+            // 正常用不到这里
+            Ok(Severity::Null)
+        }
+    }
+
+    /// 列出受此安全公告影响的组件
+    #[instrument(skip(self))]
+    pub fn affected_component(&self) -> Option<&str> {
+        if let Some(note) = self.documentnotes.get("Affected Component") {
+            Some(note.content.as_str())
+        } else {
+            None
+        }
+    }
+
+    /// 列出受此安全公告影响的系统列表
+    #[instrument(skip(self))]
+    pub fn affected_products(&self) -> &Vec<Product> {
+        &self.producttree.products
+    }
+
+    /// 将之转换成精简的公告格式
+    #[instrument(skip(self))]
+    pub fn sainfo(&self) -> SaInfo {
+        let mut cves = vec![];
+        for v in &self.vulnerabilities {
+            cves.push(v.to_cve());
+        }
+
+        SaInfo {
+            id: self.id().to_string(),
+            url: self.url(),
+            title: self.title().to_string(),
+            severity: self.severity().unwrap(),
+            description: self.description().unwrap().to_string(),
+            cves,
+        }
+    }
+
     #[instrument(skip(self))]
     pub fn load_xml(&mut self, xmlfile: &str) -> io::Result<()> {
         let file = File::open(xmlfile)?;
@@ -770,6 +853,19 @@ impl Vulnerability {
         }
     }
 
+    // 转换成简单的 CVE 格式
+    pub fn to_cve(&self) -> CVE {
+        let id = self.cve.clone();
+        let url = format!("https://nvd.nist.gov/vuln/detail/{}", self.cve);
+        let severity = self.threats[0].description.clone();
+
+        CVE {
+            id,
+            url,
+            severity,
+        }
+    }
+
     #[instrument(skip(self, xmlreader))]
     fn load_from_xmlreader(&mut self, xmlreader: &mut XmlReader) {
         loop {
@@ -1104,4 +1200,36 @@ impl Remediation {
             }
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SaInfo {
+    // sa id
+    pub id: String,
+
+    // sa's url
+    pub url: String,
+
+    // sa title
+    pub title: String,
+
+    // the major severity
+    pub severity: Severity,
+
+    pub description: String,
+
+    // 包含的 cve 列表
+    cves: Vec<CVE>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CVE {
+    // cve id
+    pub id: String,
+
+    // cve 官网地址
+    pub url: String,
+
+    // 严重级别
+    pub severity: Severity,
 }

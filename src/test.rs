@@ -142,4 +142,8 @@ fn cvrf_works() {
         cvrf.vulnerabilities[0].remediations[0].url,
         cvrf_vulner_remedition_url
     );
+
+    // SaInfo
+    let sa = cvrf.sainfo();
+    assert_eq!(sa.id, id);
 }
