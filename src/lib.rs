@@ -111,10 +111,10 @@ pub struct CVRF {
     pub documenttracking: DocumentTracking,
 
     // <DocumentNotes>
-    pub documentnotes: Vec<Note>,
+    pub documentnotes: HashMap<String, Note>,
 
     // <DocumentReferences>
-    pub documentreferences: Vec<Reference>,
+    pub documentreferences: HashMap<String, Reference>,
 
     // <ProductTree xmlns="http://www.icasi.org/CVRF/schema/prod/1.1">
     pub producttree: ProductTree,
@@ -132,10 +132,10 @@ impl CVRF {
             documenttype: String::new(),
             documentpublisher: Publisher::new(),
             documenttracking: DocumentTracking::new(),
-            documentnotes: vec![],
-            documentreferences: vec![],
+            documentnotes: HashMap::new(),
+            documentreferences: HashMap::new(),
             producttree: ProductTree::new(),
-            vulnerabilities: vec![],
+            vulnerabilities: Vec::new(),
         }
     }
 
@@ -187,7 +187,7 @@ impl CVRF {
             if xmlreader.depth < 2 {
                 break;
             }
-            self.documentnotes.push(note);
+            self.documentnotes.insert(note.title.clone(), note);
         }
     }
 
@@ -199,7 +199,7 @@ impl CVRF {
             if xmlreader.depth < 2 {
                 break;
             }
-            self.documentreferences.push(reference);
+            self.documentreferences.insert(reference.r#type.clone(), reference);
         }
     }
 
@@ -736,7 +736,7 @@ impl Product {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Vulnerability {
     // <Notes>...</Notes>
-    pub notes: Vec<Note>,
+    pub notes: HashMap<String, Note>,
 
     // <ReleaseDate>
     pub releasedate: String,
@@ -760,7 +760,7 @@ pub struct Vulnerability {
 impl Vulnerability {
     pub fn new() -> Self {
         Vulnerability {
-            notes: Vec::new(),
+            notes: HashMap::new(),
             releasedate: String::new(),
             cve: String::new(),
             productstatuses: Vec::new(),
@@ -800,7 +800,7 @@ impl Vulnerability {
             if xmlreader.depth < 3 {
                 break;
             }
-            self.notes.push(note);
+            self.notes.insert(note.title.clone(), note);
         }
     }
 

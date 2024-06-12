@@ -42,19 +42,27 @@ fn cvrf_works() {
     let note_title = "Synopsis";
     let note_type = "General";
     let note_ordinal = "1";
-    let note_content =  "An update for golang is now available for openEuler-20.03-LTS-SP1,openEuler-20.03-LTS-SP4,openEuler-22.03-LTS,openEuler-22.03-LTS-SP1,openEuler-22.03-LTS-SP2 and openEuler-22.03-LTS-SP3.";
+    let note_content = "golang security update";
     assert_eq!(cvrf.documentnotes.len(), 6);
-    assert_eq!(cvrf.documentnotes[0].title, note_title);
-    assert_eq!(cvrf.documentnotes[0].r#type, note_type);
-    assert_eq!(cvrf.documentnotes[0].ordinal, note_ordinal);
-    assert_eq!(cvrf.documentnotes[1].content, note_content);
+    if let Some(note) = cvrf.documentnotes.get("Synopsis") {
+        assert_eq!(note.title, note_title);
+        assert_eq!(note.r#type, note_type);
+        assert_eq!(note.ordinal, note_ordinal);
+        assert_eq!(note.content, note_content);
+    } else {
+        assert!(false);
+    }
 
     // references
     let reference_type = "openEuler CVE";
     let reference_url = "https://www.openeuler.org/en/security/cve/detail.html?id=CVE-2023-45288";
     assert_eq!(cvrf.documentreferences.len(), 3);
-    assert_eq!(cvrf.documentreferences[1].r#type, reference_type);
-    assert_eq!(cvrf.documentreferences[1].url[0], reference_url);
+    if let Some(reference) = cvrf.documentreferences.get("openEuler CVE") {
+        assert_eq!(reference.r#type, reference_type);
+        assert_eq!(reference.url[0], reference_url);
+    } else {
+        assert!(false);
+    }
 
     // producttree
     let producttree_productid = "openEuler-22.03-LTS";
