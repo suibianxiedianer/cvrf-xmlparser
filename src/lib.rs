@@ -16,7 +16,7 @@ use xml::reader::{EventReader, XmlEvent};
 mod test;
 
 #[allow(dead_code)]
-struct XmlReader {
+pub struct XmlReader {
     // an iterator for XmlEvent
     events: EventReader<BufReader<File>>,
 
@@ -30,6 +30,10 @@ impl XmlReader {
         let events = EventReader::new(buffer);
 
         XmlReader { events, depth: 0 }
+    }
+
+    pub fn depth(&self) -> usize {
+        self.depth
     }
 
     // pull next stream from xml, set the depth as well.
@@ -230,7 +234,7 @@ impl CVRF {
 
         loop {
             let event = xmlreader.next();
-            if xmlreader.depth != 2 {
+            if xmlreader.depth() != 2 {
                 if event == Ok(XmlEvent::EndDocument) {
                     trace!("End of the xml, break...");
                     break;
@@ -267,7 +271,7 @@ impl CVRF {
             let mut note = Note::new();
             note.load_from_xmlreader(xmlreader);
 
-            if xmlreader.depth < 2 {
+            if xmlreader.depth() < 2 {
                 break;
             }
             self.documentnotes.insert(note.title.clone(), note);
@@ -279,7 +283,7 @@ impl CVRF {
             let mut reference = Reference::new();
             reference.load_from_xmlreader(xmlreader);
 
-            if xmlreader.depth < 2 {
+            if xmlreader.depth() < 2 {
                 break;
             }
             self.documentreferences.insert(reference.r#type.clone(), reference);
@@ -421,7 +425,7 @@ impl DocumentTracking {
             let mut revision = Revision::new();
             revision.load_from_xmlreader(xmlreader);
             // 所有 revision 读取完毕
-            if xmlreader.depth < 3 {
+            if xmlreader.depth() < 3 {
                 trace!("RevisionHistory read to end.");
                 break;
             }
@@ -620,14 +624,14 @@ impl Reference {
         loop {
             match xmlreader.next() {
                 Ok(XmlEvent::StartElement { attributes, .. }) => {
-                    if xmlreader.depth == 3 {
+                    if xmlreader.depth() == 3 {
                         self.r#type = attributes[0].value.clone();
                     } else {
                         self.url.push(xmlreader.next_characters());
                     }
                 }
                 Ok(XmlEvent::EndElement { .. }) => {
-                    if xmlreader.depth < 3 {
+                    if xmlreader.depth() < 3 {
                         trace!("Reference read end.");
                         break;
                     }
@@ -703,7 +707,7 @@ impl ProductTree {
                     }
                 }
                 Ok(XmlEvent::EndElement { .. }) => {
-                    if xmlreader.depth < 2 {
+                    if xmlreader.depth() < 2 {
                         trace!("ProductTree read end.");
                         break;
                     }
@@ -732,7 +736,7 @@ impl ProductTree {
         loop {
             let mut product = Product::new();
             product.load_from_xmlreader(xmlreader);
-            if xmlreader.depth < 3 {
+            if xmlreader.depth() < 3 {
                 break;
             }
             self.products.push(product);
@@ -745,7 +749,7 @@ impl ProductTree {
         loop {
             let mut package = Product::new();
             package.load_from_xmlreader(xmlreader);
-            if xmlreader.depth < 3 {
+            if xmlreader.depth() < 3 {
                 break;
             }
             packages.push(package);
@@ -893,7 +897,7 @@ impl Vulnerability {
             let mut note = Note::new();
             note.load_from_xmlreader(xmlreader);
 
-            if xmlreader.depth < 3 {
+            if xmlreader.depth() < 3 {
                 break;
             }
             self.notes.insert(note.title.clone(), note);
@@ -904,7 +908,7 @@ impl Vulnerability {
         loop {
             let mut status = ProductStatus::new();
             status.load_from_xmlreader(xmlreader);
-            if xmlreader.depth < 3 {
+            if xmlreader.depth() < 3 {
                 break;
             }
             self.productstatuses.push(status);
@@ -915,7 +919,7 @@ impl Vulnerability {
         loop {
             let mut threat = Threat::new();
             threat.load_from_xmlreader(xmlreader);
-            if xmlreader.depth < 3 {
+            if xmlreader.depth() < 3 {
                 break;
             }
             self.threats.push(threat);
@@ -926,7 +930,7 @@ impl Vulnerability {
         loop {
             let mut scoreset = ScoreSet::new();
             scoreset.load_from_xmlreader(xmlreader);
-            if xmlreader.depth < 3 {
+            if xmlreader.depth() < 3 {
                 break;
             }
             self.cvssscoresets.push(scoreset);
@@ -937,7 +941,7 @@ impl Vulnerability {
         loop {
             let mut remediation = Remediation::new();
             remediation.load_from_xmlreader(xmlreader);
-            if xmlreader.depth < 3 {
+            if xmlreader.depth() < 3 {
                 break;
             }
             self.remediations.push(remediation);
@@ -972,13 +976,13 @@ impl ProductStatus {
         loop {
             match xmlreader.next() {
                 Ok(XmlEvent::StartElement { attributes, .. }) => {
-                    if xmlreader.depth == 4 {
+                    if xmlreader.depth() == 4 {
                         self.status = attributes[0].value.clone();
                     }
                     self.products.push(xmlreader.next_characters());
                 }
                 Ok(XmlEvent::EndElement { .. }) => {
-                    if xmlreader.depth < 4 {
+                    if xmlreader.depth() < 4 {
                         break;
                     }
                 }
@@ -1018,14 +1022,14 @@ impl Threat {
         loop {
             match xmlreader.next() {
                 Ok(XmlEvent::StartElement { attributes, .. }) => {
-                    if xmlreader.depth == 4 {
+                    if xmlreader.depth() == 4 {
                         self.r#type = attributes[0].value.clone();
                     } else {
                         self.description = xmlreader.next_characters().parse::<Severity>().unwrap();
                     }
                 }
                 Ok(XmlEvent::EndElement { .. }) => {
-                    if xmlreader.depth < 4 {
+                    if xmlreader.depth() < 4 {
                         break;
                     }
                 }
@@ -1166,13 +1170,13 @@ impl Remediation {
         loop {
             match xmlreader.next() {
                 Ok(XmlEvent::StartElement { attributes, .. }) => {
-                    if xmlreader.depth == 4 {
+                    if xmlreader.depth() == 4 {
                         self.r#type = attributes[0].value.clone();
                     }
                     break;
                 }
                 Ok(XmlEvent::EndElement { .. }) => {
-                    if xmlreader.depth < 4 {
+                    if xmlreader.depth() < 4 {
                         break;
                     }
                 }
