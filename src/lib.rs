@@ -1223,7 +1223,7 @@ pub struct SaInfo {
     pub description: String,
 
     // 包含的 cve 列表
-    cves: Vec<CVE>,
+    pub cves: Vec<CVE>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
