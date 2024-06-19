@@ -1043,7 +1043,7 @@ impl Threat {
     }
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Severity {
     Null,
     Low,
@@ -1206,7 +1206,7 @@ impl Remediation {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct SaInfo {
     // sa id
     pub id: String,
@@ -1226,7 +1226,7 @@ pub struct SaInfo {
     pub cves: Vec<CVE>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct CVE {
     // cve id
     pub id: String,
